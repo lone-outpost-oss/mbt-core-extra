@@ -1,4 +1,4 @@
-/// Convert an `Int` within 0-255 (0x00-0xFF } to `Byte`.
+/// Convert an `Int` within 0-255 (0x00-0xFF) to `Byte`.
 /// 
 /// # Panics
 /// 
