@@ -1,0 +1,8 @@
+{
+  "import": [
+    {
+      "path": "loneoutpost/core-extra/byte",
+      "alias": "bytex"
+    }
+  ]
+}
