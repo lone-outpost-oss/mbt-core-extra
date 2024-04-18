@@ -20,3 +20,11 @@ fn test_bytes_eq(l: Bytes, r: Bytes) -> Result[Unit, String] {
     Err(msg.to_string())
   }
 }
+
+fn test_bytes_from_int_arr(arr: Array[Int]) -> Bytes {
+  let r = Bytes::make(arr.length(), 0)
+  for i = 0; i < arr.length(); i = i + 1 {
+    r[i] = arr[i]
+  }
+  r
+}

@@ -1,43 +1,105 @@
+/// Write bytes representation of an `Int64` by specified endianness into target `Bytes` at certain offset.
+/// 
+/// # Panics
+/// 
+/// 8 bytes of data are required from offset position. Panics when insufficient.
+pub fn int64_into_bytes(v: Int64, endian: Endianness, target: Bytes, offset: Int) -> Unit {
+  @assertion.assert_true(offset + 8 <= target.length()).map_err(fn (msg) -> Unit { abort(msg) }).unwrap()
+  for bs = 0; bs < 8; bs = bs + 1 {
+    let bd = endianness_index(bs, 8, endian)
+    target[offset + bd] = v.lsr(bs * 8).land(0xFFL).to_int()
+  }
+}
+
+/// Write bytes representation of an `Int64` by little-endian into target `Bytes` at certain offset.
+/// 
+/// # Panics
+/// 
+/// 8 bytes of data are required from offset position. Panics when insufficient.
+pub fn int64_into_bytes_le(v: Int64, target: Bytes, offset: Int) -> Unit {
+  int64_into_bytes(v, Endianness::LittleEndian, target, offset)
+}
+
+/// Write bytes representation of an `Int64` by big-endian into target `Bytes` at certain offset.
+/// 
+/// # Panics
+/// 
+/// 8 bytes of data are required from offset position. Panics when insufficient.
+pub fn int64_into_bytes_be(v: Int64, target: Bytes, offset: Int) -> Unit {
+  int64_into_bytes(v, Endianness::BigEndian, target, offset)
+}
+
+test "int64_into_bytes(series)" {
+  let cases = [
+    (
+      0xff_01_02_03_04_05_06_07_L, 
+      0, 
+      test_bytes_from_int_arr([0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc]), 
+      test_bytes_from_int_arr([0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0xff, 0xcc, 0xcc]), 
+      test_bytes_from_int_arr([0xff, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0xcc, 0xcc]),
+    ),
+    (
+      0x01_02_03_04_05_06_07_ff_L, 
+      1, 
+      test_bytes_from_int_arr([0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa]), 
+      test_bytes_from_int_arr([0xaa, 0xff, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0xaa]), 
+      test_bytes_from_int_arr([0xaa, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0xff, 0xaa]), 
+    ),
+    (
+      0xd3_9c_33_c7_f8_17_5d_9c_L, 
+      2, 
+      test_bytes_from_int_arr([0xdf, 0xfd, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf, 0xdf]), 
+      test_bytes_from_int_arr([0xdf, 0xfd, 0x9c, 0x5d, 0x17, 0xf8, 0xc7, 0x33, 0x9c, 0xd3]), 
+      test_bytes_from_int_arr([0xdf, 0xfd, 0xd3, 0x9c, 0x33, 0xc7, 0xf8, 0x17, 0x5d, 0x9c]),
+    ),
+  ]
+
+  for icase = 0; icase < cases.length(); icase = icase + 1 {
+    let (input, pos, original, le_expected, be_expected) = cases[icase];
+
+    let buffer = original.copy()
+    int64_into_bytes(input, Endianness::LittleEndian, buffer, pos)
+    test_bytes_eq(buffer, le_expected)?
+    let buffer = original.copy()
+    int64_into_bytes(input, Endianness::BigEndian, buffer, pos)
+    test_bytes_eq(buffer, be_expected)?
+    let buffer = original.copy()
+    int64_into_bytes(input, Endianness::NetworkEndian, buffer, pos)
+    test_bytes_eq(buffer, be_expected)?
+    let buffer = original.copy()
+    int64_into_bytes_le(input, buffer, pos)
+    test_bytes_eq(buffer, le_expected)?
+    let buffer = original.copy()
+    int64_into_bytes_be(input, buffer, pos)
+    test_bytes_eq(buffer, be_expected)?
+  }
+}
+
 /// Get bytes representation of an `Int64` by specified endianness.
 pub fn int64_to_bytes(v: Int64, endian: Endianness) -> Bytes {
   let ret = Bytes::make(8, 0)
-  for bs = 0; bs < 8; bs = bs + 1 {
-    let bd = endianness_index(bs, 8, endian)
-    ret[bd] = v.lsr(bs * 8).land(0xFFL).to_int()
-  }
+  int64_into_bytes(v, endian, ret, 0)
   ret
 }
 
 /// Get bytes representation of an `Int64` by little-endian.
 pub fn int64_to_bytes_le(v: Int64) -> Bytes {
-  int64_to_bytes(v, Endianness::LittleEndian)
+  let ret = Bytes::make(8, 0)
+  int64_into_bytes(v, Endianness::LittleEndian, ret, 0)
+  ret
 }
 
 /// Get bytes representation of an `Int64` by big-endian.
 pub fn int64_to_bytes_be(v: Int64) -> Bytes {
-  int64_to_bytes(v, Endianness::BigEndian)
+  let ret = Bytes::make(8, 0)
+  int64_into_bytes(v, Endianness::BigEndian, ret, 0)
+  ret
 }
 
 test "int64_to_bytes(series)" {
-  let input = 0xff01020304050607L;
-  let le_expected = Bytes::make(8, 0)
-  le_expected[0] = b'\x07'.to_int()
-  le_expected[1] = b'\x06'.to_int()
-  le_expected[2] = b'\x05'.to_int()
-  le_expected[3] = b'\x04'.to_int()
-  le_expected[4] = b'\x03'.to_int()
-  le_expected[5] = b'\x02'.to_int()
-  le_expected[6] = b'\x01'.to_int()
-  le_expected[7] = b'\xff'.to_int()
-  let be_expected = Bytes::make(8, 0)
-  be_expected[0] = le_expected[7]
-  be_expected[1] = le_expected[6]
-  be_expected[2] = le_expected[5]
-  be_expected[3] = le_expected[4]
-  be_expected[4] = le_expected[3]
-  be_expected[5] = le_expected[2]
-  be_expected[6] = le_expected[1]
-  be_expected[7] = le_expected[0]
+  let input = 0xff_01_02_03_04_05_06_07_L;
+  let le_expected = test_bytes_from_int_arr([0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0xff])
+  let be_expected = test_bytes_from_int_arr([0xff, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07])
   test_bytes_eq(int64_to_bytes(input, Endianness::LittleEndian), le_expected)?
   test_bytes_eq(int64_to_bytes(input, Endianness::BigEndian), be_expected)?
   test_bytes_eq(int64_to_bytes(input, Endianness::NetworkEndian), be_expected)?
@@ -79,21 +141,11 @@ pub fn int64_be_from_bytes(bytes: Bytes, offset: Int) -> Int64 {
 }
 
 test "int64_from_bytes(series)" {
-  let input = Bytes::make(10, 0)
-  input[0] = b'\x83'.to_int()
-  input[1] = b'\xe7'.to_int()
-  input[2] = b'\x4c'.to_int()
-  input[3] = b'\xcb'.to_int()
-  input[4] = b'\x8e'.to_int()
-  input[5] = b'\x35'.to_int()
-  input[6] = b'\x1c'.to_int()
-  input[7] = b'\xc5'.to_int()
-  input[8] = b'\xa4'.to_int()
-  input[9] = b'\x4e'.to_int()
+  let input = test_bytes_from_int_arr([0x83, 0xe7, 0x4c, 0xcb, 0x8e, 0x35, 0x1c, 0xc5, 0xa4, 0x4e])
   let cases = [
-    (0, 0xc51c358ecb4ce783L, 0x83e74ccb8e351cc5L), 
-    (1, 0xa4c51c358ecb4ce7L, 0xe74ccb8e351cc5a4L), 
-    (2, 0x4ea4c51c358ecb4cL, 0x4ccb8e351cc5a44eL),
+    (0, 0xc5_1c_35_8e_cb_4c_e7_83_L, 0x83_e7_4c_cb_8e_35_1c_c5_L), 
+    (1, 0xa4_c5_1c_35_8e_cb_4c_e7_L, 0xe7_4c_cb_8e_35_1c_c5_a4_L), 
+    (2, 0x4e_a4_c5_1c_35_8e_cb_4c_L, 0x4c_cb_8e_35_1c_c5_a4_4e_L),
   ]
   for icase = 0; icase < cases.length(); icase = icase + 1 {
     let (pos, le_expected, be_expected) = cases[icase];
