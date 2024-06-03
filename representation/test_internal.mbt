@@ -1,4 +1,4 @@
-fn test_bytes_eq(l: Bytes, r: Bytes) -> Result[Unit, String] {
+fn test_bytes_eq(l: Bytes, r: Bytes, ~source: SourceLoc = _) -> Result[Unit, String] {
   if l.length() == r.length() {
     for i = 0; i < l.length(); i = i + 1 {
       if l[i] != r[i] {
@@ -7,6 +7,7 @@ fn test_bytes_eq(l: Bytes, r: Bytes) -> Result[Unit, String] {
         msg.write_string(l[i].to_string())
         msg.write_string(" != ")
         msg.write_string(r[i].to_string())
+        msg.write_string(" (\(source))")
         return Err(msg.to_string())
       }
     }
@@ -19,12 +20,4 @@ fn test_bytes_eq(l: Bytes, r: Bytes) -> Result[Unit, String] {
     msg.write_string(r.length().to_string())
     Err(msg.to_string())
   }
-}
-
-fn test_bytes_from_int_arr(arr: Array[Int]) -> Bytes {
-  let r = Bytes::make(arr.length(), 0)
-  for i = 0; i < arr.length(); i = i + 1 {
-    r[i] = arr[i]
-  }
-  r
 }
